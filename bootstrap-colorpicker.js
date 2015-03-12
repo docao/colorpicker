@@ -28,7 +28,7 @@
 				'<table>'+
 					'<tr>'+
 						'<td class="color-preview" style="padding:0 3px;vertical-align:top"><div></div></td>'+
-						'<td class="color-gradient" rowspan="3">&times;</td>'+
+						'<td class="color-gradient" rowspan="3">>&nbsp;</td>'+
 					'</tr>'+
 					'<tr>'+
 						'<td class="color-box"><div></div></td>'+
@@ -44,24 +44,78 @@
 		var hex = c.toString(16);
 		return (hex.length == 1 ? '0' + hex : hex).toUpperCase();
 	}
-	var hexColor = function(r, g, b) {
+	var rgb2hex = function(r, g, b) {
 		return '#' + hex(r) + hex(g) + hex(b);
 	}
 	
-	var hex2RGB = function(color) {
-		var r, g, b;
-		if(color.length == 4) {
-			r = parseInt(color.charAt(1) + color.charAt(1), 16);
-			g = parseInt(color.charAt(2) + color.charAt(2), 16);
-			b = parseInt(color.charAt(3) + color.charAt(3), 16);
-		} else {
-			r = parseInt(color.substr(1,2), 16);
-			g = parseInt(color.substr(3,2), 16);
-			b = parseInt(color.substr(5,2), 16);
-		}
-		return [r,g,b];
+	var hex2rgb = function(color) {
+		return color.length == 4 ? [
+			parseInt(color.charAt(1) + color.charAt(1), 16),
+			parseInt(color.charAt(2) + color.charAt(2), 16),
+			parseInt(color.charAt(3) + color.charAt(3), 16)] : 
+		[
+		 	parseInt(color.substr(1,2), 16), 
+		 	parseInt(color.substr(3,2), 16), 
+		 	parseInt(color.substr(5,2), 16)];
 	};
 	
+	var rgb2hsl = function rgb2hsl(r, g, b) {
+		r = r / 255;
+		g = g / 255;
+		b = b / 255;
+		var max = Math.max(r, g, b), min = Math.min(r, g, b);
+		var h, s, l = (max + min) / 2;
+	
+		if (max == min)
+			h = s = 0; // achromatic
+		else {
+			var d = max - min;
+			s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+			switch (max) {
+			case r:
+				h = (g - b) / d + (g < b ? 6 : 0);
+				break;
+			case g:
+				h = (b - r) / d + 2;
+				break;
+			case b:
+				h = (r - g) / d + 4;
+				break;
+			}
+			h /= 6;
+		}
+		return [Math.round(360 * h), Math.round(100 * s), Math.round(100 * l)];
+	}
+	
+	var hue2rgb = function(p, q, t) {
+		(t < 0) && (t += 1);
+		(t > 1) && (t -= 1);
+		if (6 * t < 1) return p + (q - p) * 6 * t;
+		if (2 * t < 1) return q;
+		if (3 * t < 2) return p + (q - p) * (2 / 3 - t) * 6;
+		return p;
+	}
+	
+	// Params: h in [0, 360], s, l in [0, 100]
+	// Returns: r, g, b  in [0, 255]
+	var hsl2rgb = function(h, s, l) {
+		var r, g, b;
+	
+		h = h / 360;
+		s = s / 100;
+		l = l / 100;
+	
+		if (s === 0) r = g = b = l; // achromatic
+		else {
+			var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+			var p = 2 * l - q;
+			r = hue2rgb(p, q, h + 1 / 3);
+			g = hue2rgb(p, q, h);
+			b = hue2rgb(p, q, h - 1 / 3);
+		}
+		return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+	}
+
 	var ColorPicker = function(element, options) {
 		this.$target = $(element);
 		this.options = options;
@@ -77,7 +131,7 @@
 		dropdownAlign: null,
 		defaultColor: '#000000',
 		dropdownStyle: {},
-		cellSize: 22,
+		cellSize: 30,
 		cellStyle: {
 			padding: 0,
 			border: '1px solid #ccc',
@@ -92,7 +146,7 @@
 		init: function() {
 			var cp = this;
 			
-			cp.options.cellSize = Math.max(cp.options.cellSize, 22);
+			cp.options.cellSize = Math.max(cp.options.cellSize, 30);
 			cp.options.baseSize = 6*(cp.options.cellSize +2) + 21;
 			
 			cp.$dropdown = $(template);
@@ -127,7 +181,7 @@
 			setStyle(cp.$menu, cp.options.dropdownStyle);
 			if(cp.options.dropdownAlign=='right') cp.$menu.addClass('pull-right');
 			
-			cp.$colorPreview.css('height', 256-cp.options.baseSize-32);
+			cp.$colorPreview.css('height', 300-cp.options.baseSize-32);
 			
 			cp.$colorBox.css({
 				overflow: 'hidden',
@@ -164,16 +218,17 @@
 		setColorEvent: function($td, callback) {
 			var cp = this;
 			$td.mouseenter(function(){
-				cp.$colorPreview.css('backgroundColor', $(this).data('bgColor'));
+				cp.$colorPreview.css('backgroundColor', $(this).data('color'));
 			}).mouseleave(function(){
 				cp.$colorPreview.css('backgroundColor', cp.$target.val());
 			});
 			$td.on('click', function(e){
 				e.stopPropagation();
 				var $this = $(this);
-				if(cp.$lastItem) cp.$lastItem.css('color', cp.$lastItem.data('bgColor'));
-				cp.setValue($this.data('bgColor'));
-				$this.css('color', $this.data('textColor'));
+				if(cp.$lastItem) cp.$lastItem.css('outline', 0);
+				cp.setValue($this.data('color'));
+				var rgb = $this.data('rgb');
+				$this.css('outline', '1px solid ' + rgb2hex(255-rgb[0],255-rgb[1],255-rgb[2]));
 				cp.$lastItem = $this;
 				if(typeof callback == 'function') callback();
 			});
@@ -192,57 +247,46 @@
 				for(var j in colorPattern) {
 					var $tr = $('<tr>').appendTo($colorTable);
 					for(var k in colorPattern) {
-						var $td = $('<td><i style="font-size:16px;font-weight:bold">&times;</i></td>').appendTo($tr), 
+						var $td = $('<td><i style="font-size:16px;font-weight:bold">&nbsp;</i></td>').appendTo($tr), 
 							a = colorPattern[i], 
 							b = colorPattern[j], 
 							c = colorPattern[k], 
-							bgColor = hexColor(a, b, c),
-							textColor = hexColor(255-a, 255-b, 255-c);
+							color = rgb2hex(a, b, c);
 						setStyle($td, cp.options.cellStyle);
 						$td.width(cp.options.cellSize);
 						$td.height(cp.options.cellSize);
-						$td.data('rgb', [a,b,c]);
-						$td.data('bgColor', bgColor);
-						$td.data('textColor', textColor);
+						$td.data('color', color);
+						$td.data('rgb', [a, b, c]);
 						$td.css({
-							backgroundColor: bgColor,
-							color: bgColor
+							backgroundColor: color
 						});
-						$td.attr('title', bgColor);
+						$td.attr('title', color);
 						cp.setColorEvent($td, function(){
-							cp.renderGradientBar();
+							cp.updateGradientBar();
 						});
 					}
 				}
 			}
-			this.renderGradientBar();
+			this.updateGradientBar();
 			this.renderActionCol();
 		},
-		renderGradientBar: function() {
-			var cp = this, rgb = hex2RGB(cp.$target.val()), r0 = rgb[0], g0 = rgb[1], b0 = rgb[2];
+		updateGradientBar: function() {
+			var cp = this, rgb = hex2rgb(cp.$target.val()), r0 = rgb[0], g0 = rgb[1], b0 = rgb[2];
 			cp.$colorGradient.html('');
-			var _r0 = 255-r0, _g0 = 255-g0, _b0 = 255-b0, g0_r0 = g0/r0, _g0_r0 = _g0/_r0, b0_r0 = b0/r0, _b0_r0 = _b0/_r0;
 			var $table = $('<table>').appendTo(cp.$colorGradient);
-			for(var i = 0; i <= 127; i++) {
-				var r = i * 2, g, b;
-				if(r <= r0) {
-					g = Math.round(r * (g0/r0));
-					b = Math.round(r * (b0/r0));
-				} else {
-					g = Math.round(g0 + (r-r0)*_g0_r0);
-					b = Math.round(b0 + (r-r0)*_b0_r0);
-				}
-				if(isNaN(g) || isNaN(b)) continue;
-				var color = hexColor(r,g,b);
+			var hsl = rgb2hsl(r0, g0, b0), s = ((r0 == 0 && g0 == 0 && b0 == 0)||(r0 == 255 && g0 == 255 && b0 == 255)) ? 0 : 100;
+			for(var i = 0; i <= 100; i++) {
+				rgb = hsl2rgb(hsl[0], s, i);
+				var color = rgb2hex(rgb[0], rgb[1], rgb[2]);
 				var $tr = $('<tr>').appendTo($table);
 				var $td = $('<td>').appendTo($tr);
 				$td.attr('title', color);
-				$td.data('rgb', [r,g,b]);
-				$td.data('bgColor', color);
+				$td.data('color', color);
+				$td.data('rgb', rgb);
 				$td.css({
 					width: cp.options.cellSize,
 					minWidth: cp.options.cellSize,
-					height: 2,
+					height: 3,
 					cursor: 'crosshair',
 					backgroundColor: color
 				});
