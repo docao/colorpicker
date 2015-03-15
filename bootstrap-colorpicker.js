@@ -357,8 +357,6 @@
 			if (!colorpicker)
 				$input.data('bs.colorpicker', (colorpicker = new ColorPicker(
 						this, options)))
-			if (typeof option == 'string')
-				colorpicker[option]();
 		});
 	}
 
