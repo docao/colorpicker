@@ -27,8 +27,8 @@
 			'<div class="dropdown-menu">' +
 				'<table>'+
 					'<tr>'+
-						'<td class="color-preview" style="padding:0 3px;vertical-align:top"><div></div></td>'+
-						'<td class="color-gradient" rowspan="3">>&nbsp;</td>'+
+						'<td class="color-preview" style="padding:0 3px;vertical-align:top"><div style="text-align:center;font-weight:bold;font-size:20px;letter-spacing:1px;color:#fff;border:1px solid #ccc"></div></td>'+
+						'<td class="color-gradient" rowspan="3" style="vertical-align:top">&nbsp;</td>'+
 					'</tr>'+
 					'<tr>'+
 						'<td class="color-box"><div></div></td>'+
@@ -131,7 +131,8 @@
 		dropdownAlign: null,
 		defaultColor: '#000000',
 		dropdownStyle: {},
-		cellSize: 30,
+		cellSize: 18,
+		gradientCellSize: 2,
 		cellStyle: {
 			padding: 0,
 			border: '1px solid #ccc',
@@ -146,7 +147,6 @@
 		init: function() {
 			var cp = this;
 			
-			cp.options.cellSize = Math.max(cp.options.cellSize, 30);
 			cp.options.baseSize = 6*(cp.options.cellSize +2) + 21;
 			
 			cp.$dropdown = $(template);
@@ -181,7 +181,8 @@
 			setStyle(cp.$menu, cp.options.dropdownStyle);
 			if(cp.options.dropdownAlign=='right') cp.$menu.addClass('pull-right');
 			
-			cp.$colorPreview.css('height', 300-cp.options.baseSize-32);
+			var h = 100*cp.options.gradientCellSize-cp.options.baseSize-32;
+			cp.$colorPreview.css({height:h,lineHeight:h+'px'});
 			
 			cp.$colorBox.css({
 				overflow: 'hidden',
@@ -213,14 +214,19 @@
 			this.$miniPreview.css('backgroundColor', color);
 			this.$colorPreview.css('backgroundColor', color);
 			this.$target.val(color);
+			this.$colorPreview.html(color);
 			this.$dropdown.attr('title', color);
 		},
 		setColorEvent: function($td, callback) {
 			var cp = this;
 			$td.mouseenter(function(){
-				cp.$colorPreview.css('backgroundColor', $(this).data('color'));
+				var color = $(this).data('color');
+				cp.$colorPreview.css({backgroundColor:color, color: $(this).data('_color')});
+				cp.$colorPreview.html(color);
 			}).mouseleave(function(){
-				cp.$colorPreview.css('backgroundColor', cp.$target.val());
+				var color = cp.$target.val().toUpperCase();
+				cp.$colorPreview.css({backgroundColor:color, color: $(this).data('_color')});
+				cp.$colorPreview.html(color);
 			});
 			$td.on('click', function(e){
 				e.stopPropagation();
@@ -228,7 +234,7 @@
 				if(cp.$lastItem) cp.$lastItem.css('outline', 0);
 				cp.setValue($this.data('color'));
 				var rgb = $this.data('rgb');
-				$this.css('outline', '1px solid ' + rgb2hex(255-rgb[0],255-rgb[1],255-rgb[2]));
+				$this.css('outline', '1px solid ' + $this.data('_color'));
 				cp.$lastItem = $this;
 				if(typeof callback == 'function') callback();
 			});
@@ -247,7 +253,7 @@
 				for(var j in colorPattern) {
 					var $tr = $('<tr>').appendTo($colorTable);
 					for(var k in colorPattern) {
-						var $td = $('<td><i style="font-size:16px;font-weight:bold">&nbsp;</i></td>').appendTo($tr), 
+						var $td = $('<td>&nbsp;</td>').appendTo($tr), 
 							a = colorPattern[i], 
 							b = colorPattern[j], 
 							c = colorPattern[k], 
@@ -256,6 +262,7 @@
 						$td.width(cp.options.cellSize);
 						$td.height(cp.options.cellSize);
 						$td.data('color', color);
+						$td.data('_color', rgb2hex(255-a, 255-b, 255-c));
 						$td.data('rgb', [a, b, c]);
 						$td.css({
 							backgroundColor: color
@@ -282,11 +289,12 @@
 				var $td = $('<td>').appendTo($tr);
 				$td.attr('title', color);
 				$td.data('color', color);
+				$td.data('_color', rgb2hex(255-rgb[0], 255-rgb[1], 255-rgb[2]));
 				$td.data('rgb', rgb);
 				$td.css({
 					width: cp.options.cellSize,
 					minWidth: cp.options.cellSize,
-					height: 3,
+					height: cp.options.gradientCellSize,
 					cursor: 'crosshair',
 					backgroundColor: color
 				});
@@ -305,8 +313,8 @@
 				var $li = $('<li>').appendTo($ul);
 				$li.css({
 					outline: 'none',
-					marginLeft: 5,
-					marginRight: 5,
+					marginLeft: 3,
+					marginRight: 3,
 					width: 16,
 					height: 16
 				});
